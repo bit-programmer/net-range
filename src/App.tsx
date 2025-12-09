@@ -436,7 +436,7 @@ function App() {
                       <input
                         value={range}
                         onChange={(e) => setRange(e.target.value)}
-                        placeholder="e.g. 192.168.0.0 - 192.168.255.255"
+                        placeholder="e.g. 192.168.0.0 to 192.168.255.255"
                         className="bg-transparent border-b border-white/10 text-white focus:border-primarycolor focus:outline-none w-full py-1"
                       />
                     </div>
