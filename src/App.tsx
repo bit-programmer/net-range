@@ -14,6 +14,7 @@ function App() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [responseCode, setResponseCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
   const handleConnect = async () => {
     // Basic validation
@@ -24,9 +25,10 @@ function App() {
 
     setStatus('loading');
     setError(null);
+    setValidationErrors([]);
 
     try {
-      const response = await fetch('https://vulerability-engine.vercel.app/notify', {
+      const response = await fetch('https://vulerability-engine.vercel.app/ip-address-ranges', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -34,22 +36,36 @@ function App() {
           netmask,
           type: addressType,
           ranges: range,
-          available: availableIps,
+          available: availableIps.replace(/,/g, ''), // Sanitize for number conversion
           network: networkAddr,
           broadcast: broadcastAddr
         })
       });
 
+      const data = await response.json();
+
       if (response.ok) {
-        const data = await response.json().catch(() => ({ code: 'ACCESS_GRANTED_77' }));
-        setResponseCode(data.code || 'SECURE_LINK_ESTABLISHED');
+        setResponseCode(data.code);
         setStatus('success');
       } else {
-        throw new Error('Server connection refused.');
+        if (data.errors && Array.isArray(data.errors)) {
+          setValidationErrors(data.errors);
+          throw new Error('Validation failed'); // Trigger catch block but distinct handling
+        } else {
+          throw new Error(data.message || 'Server connection refused.');
+        }
       }
-    } catch (err) {
+    } catch (err: any) {
       setStatus('error');
-      setError('Connection failed. Server unresponsive.');
+      if (err.message !== 'Validation failed') {
+        setError(err.message || 'Connection failed.');
+      }
+    }
+  };
+
+  const copyToClipboard = () => {
+    if (responseCode) {
+      navigator.clipboard.writeText(responseCode);
     }
   };
 
@@ -303,141 +319,176 @@ function App() {
       {/* Page 6: Connect */}
       <Section title="" className="relative">
         <div className="animate-fade-in-up">
-          <div className="font-mono-art text-[0.6rem] sm:text-xs md:text-sm lg:text-base text-primarycolor font-bold leading-none mb-8 opacity-80 select-none hidden md:block">
-            {`  ____   ___   _   _  _   _  _____  ____  _____ 
- / ___| / _ \\ | \\ | || \\ | || ____|/ ___||_   _|
-| |    | | | ||  \\| ||  \\| ||  _| | |      | |  
-| |___ | |_| || |\\  || |\\  || |___| |___   | |  
- \\____| \\___/ |_| \\_||_| \\_||_____|\\____|  |_|  `}
-          </div>
-          <h1 className="md:hidden text-5xl font-bold text-primarycolor mb-6 tracking-tighter">CONNECT</h1>
 
-          {!responseCode ? (
-            <div className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-2 gap-12">
-              {/* Form Column */}
-              <div>
-                <p className="text-xl mb-8">
-                  Enter your network configuration to initialize the connection.
-                </p>
-                <div className="space-y-6">
-                  <div className="group">
-                    <label className="block text-primarycolor text-xs uppercase tracking-widest font-bold mb-2">IPv4 Address</label>
-                    <input
-                      type="text"
-                      value={ip}
-                      onChange={(e) => setIp(e.target.value)}
-                      placeholder="e.g. 192.168.1.45"
-                      className="w-full bg-black/40 border border-white/20 p-4 text-white font-mono focus:border-primarycolor focus:outline-none focus:ring-1 focus:ring-primarycolor transition-all placeholder:opacity-30"
-                    />
-                  </div>
-                  <div className="group">
-                    <label className="block text-primarycolor text-xs uppercase tracking-widest font-bold mb-2">Netmask</label>
-                    <input
-                      type="text"
-                      value={netmask}
-                      onChange={(e) => setNetmask(e.target.value)}
-                      placeholder="e.g. 255.255.255.0"
-                      className="w-full bg-black/40 border border-white/20 p-4 text-white font-mono focus:border-primarycolor focus:outline-none focus:ring-1 focus:ring-primarycolor transition-all placeholder:opacity-30"
-                    />
-                  </div>
 
-                  <button
-                    onClick={handleConnect}
-                    disabled={status === 'loading'}
-                    className="w-full py-4 bg-primarycolor text-secondarycolor font-bold rounded-none hover:bg-white transition-all cursor-pointer uppercase tracking-wider text-sm mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {status === 'loading' ? 'ESTABLISHING HANDSHAKE...' : 'CONNECT'}
-                  </button>
-                  {error && <div className="text-error font-mono text-sm mt-2">{error}</div>}
-                </div>
-              </div>
-
-              {/* Analysis Column (Now Manual/Auto Input) */}
-              <div className="font-mono text-sm border-l border-white/10 pl-8 pt-2 hidden lg:block">
-                <div className="flex justify-between items-center mb-6">
-                  <div className="text-xs opacity-40 uppercase tracking-widest">NETWORK DIAGNOSTICS</div>
-                </div>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 gap-1">
-                    <label className="opacity-50 text-xs block uppercase">[ TYPE OF ADDRESS ]</label>
-                    <input
-                      value={addressType}
-                      onChange={(e) => setAddressType(e.target.value)}
-                      placeholder="e.g. Private"
-                      className="bg-transparent border-b border-white/10 text-white focus:border-primarycolor focus:outline-none w-full py-1"
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 gap-1">
-                    <label className="opacity-50 text-xs block uppercase">[ RANGES ]</label>
-                    <input
-                      value={range}
-                      onChange={(e) => setRange(e.target.value)}
-                      placeholder="e.g. 192.168.0.0 - 192.168.255.255"
-                      className="bg-transparent border-b border-white/10 text-white focus:border-primarycolor focus:outline-none w-full py-1"
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 gap-1">
-                    <label className="opacity-50 text-xs block uppercase">[ AVAILABLE IP ADDRESSES ]</label>
-                    <input
-                      value={availableIps}
-                      onChange={(e) => setAvailableIps(e.target.value)}
-                      placeholder="e.g. 65,534"
-                      className="bg-transparent border-b border-white/10 text-white focus:border-primarycolor focus:outline-none w-full py-1"
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 gap-1">
-                    <label className="opacity-50 text-xs block uppercase">[ NETWORK ADDRESS ]</label>
-                    <input
-                      value={networkAddr}
-                      onChange={(e) => setNetworkAddr(e.target.value)}
-                      placeholder="e.g. 192.168.0.0"
-                      className="bg-transparent border-b border-white/10 text-white focus:border-primarycolor focus:outline-none w-full py-1"
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 gap-1">
-                    <label className="opacity-50 text-xs block uppercase">[ BROADCAST ADDRESS ]</label>
-                    <input
-                      value={broadcastAddr}
-                      onChange={(e) => setBroadcastAddr(e.target.value)}
-                      placeholder="e.g. 192.168.255.255"
-                      className="bg-transparent border-b border-white/10 text-primarycolor focus:border-primarycolor focus:outline-none w-full py-1"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Mobile View with Inputs */}
-              <div className="lg:hidden space-y-4 border-t border-white/10 pt-6 mt-6">
-                <input
-                  value={addressType}
-                  onChange={(e) => setAddressType(e.target.value)}
-                  placeholder="Address Type"
-                  className="w-full bg-black/40 border border-white/20 p-2 text-white text-sm"
-                />
-                <input
-                  value={networkAddr}
-                  onChange={(e) => setNetworkAddr(e.target.value)}
-                  placeholder="Network Address"
-                  className="w-full bg-black/40 border border-white/20 p-2 text-white text-sm"
-                />
-              </div>
-            </div>
-          ) : (
+          {responseCode ? (
             <div className="animate-fade-in-up text-center max-w-2xl mx-auto">
               <div className="text-6xl text-success mb-4 text-shadow-glow">✓</div>
               <h2 className="text-4xl font-bold text-white mb-6">CONNECTION ESTABLISHED</h2>
-              <div className="bg-white/10 p-8 rounded font-mono text-xl mb-8 border border-success/30">
+
+              <div className="bg-white/10 p-8 rounded font-mono text-xl mb-4 border border-success/30 relative group">
                 <div className="opacity-50 text-sm mb-2">ACCESS CODE</div>
-                <div className="text-success font-bold tracking-[0.2em]">{responseCode}</div>
+                <div className="text-success font-bold tracking-[0.2em] break-all">{responseCode}</div>
+                <button
+                  onClick={copyToClipboard}
+                  className="absolute top-4 right-4 text-xs bg-white/10 hover:bg-white/20 p-2 rounded opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-wider"
+                >
+                  Copy
+                </button>
               </div>
+
               <button
-                onClick={() => { setResponseCode(null); setStatus('idle'); setIp(''); setNetmask('') }}
+                onClick={() => { setResponseCode(null); setStatus('idle'); setIp(''); setNetmask(''); setValidationErrors([]); }}
                 className="text-white/60 hover:text-white underline underline-offset-4 decoration-white/30"
               >
                 Initialize New Connection
               </button>
             </div>
+          ) : status === 'error' && validationErrors.length > 0 ? (
+            <div className="animate-fade-in-up text-center max-w-2xl mx-auto bg-black/80 border border-error/50 p-8 rounded-lg shadow-[0_0_30px_rgba(255,0,85,0.2)]">
+              <div className="text-6xl text-error mb-4">⚠</div>
+              <h2 className="text-3xl font-bold text-white mb-6">DIAGNOSTIC ERRORS DETECTED</h2>
+
+              <div className="text-left bg-white/5 p-6 rounded space-y-3 mb-8 font-mono text-sm max-h-60 overflow-y-auto">
+                {validationErrors.map((err, idx) => (
+                  <div key={idx} className="flex gap-3 text-white/90">
+                    <span className="text-error">✖</span>
+                    <span>{err}</span>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={() => setStatus('idle')}
+                className="px-8 py-3 bg-error text-white font-bold uppercase tracking-wider text-sm hover:bg-red-600 transition-colors"
+              >
+                Retry Diagnosis
+              </button>
+            </div>
+          ) : (
+            <div className="w-full max-w-4xl mx-auto">
+              <div className="font-mono-art text-[0.6rem] sm:text-xs md:text-sm lg:text-base text-primarycolor font-bold leading-none mb-8 opacity-80 select-none hidden md:block">
+                {`  ____   ___   _   _  _   _  _____  ____  _____ 
+ / ___| / _ \\ | \\ | || \\ | || ____|/ ___||_   _|
+| |    | | | ||  \\| ||  \\| ||  _| | |      | |  
+| |___ | |_| || |\\  || |\\  || |___| |___   | |  
+ \\____| \\___/ |_| \\_||_| \\_||_____|\\____|  |_|  `}
+              </div>
+              <h1 className="md:hidden text-5xl font-bold text-primarycolor mb-6 tracking-tighter">CONNECT</h1>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+
+                {/* Form Column */}
+                <div>
+                  <p className="text-xl mb-8">
+                    Enter your network configuration to initialize the connection.
+                  </p>
+                  <div className="space-y-6">
+                    <div className="group">
+                      <label className="block text-primarycolor text-xs uppercase tracking-widest font-bold mb-2">IPv4 Address</label>
+                      <input
+                        type="text"
+                        value={ip}
+                        onChange={(e) => setIp(e.target.value)}
+                        placeholder="e.g. 192.168.1.45"
+                        className="w-full bg-black/40 border border-white/20 p-4 text-white font-mono focus:border-primarycolor focus:outline-none focus:ring-1 focus:ring-primarycolor transition-all placeholder:opacity-30"
+                      />
+                    </div>
+                    <div className="group">
+                      <label className="block text-primarycolor text-xs uppercase tracking-widest font-bold mb-2">Netmask</label>
+                      <input
+                        type="text"
+                        value={netmask}
+                        onChange={(e) => setNetmask(e.target.value)}
+                        placeholder="e.g. 255.255.255.0"
+                        className="w-full bg-black/40 border border-white/20 p-4 text-white font-mono focus:border-primarycolor focus:outline-none focus:ring-1 focus:ring-primarycolor transition-all placeholder:opacity-30"
+                      />
+                    </div>
+
+                    <button
+                      onClick={handleConnect}
+                      disabled={status === 'loading'}
+                      className="w-full py-4 bg-primarycolor text-secondarycolor font-bold rounded-none hover:bg-white transition-all cursor-pointer uppercase tracking-wider text-sm mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {status === 'loading' ? 'ESTABLISHING HANDSHAKE...' : 'CONNECT'}
+                    </button>
+                    {error && <div className="text-error font-mono text-sm mt-2">{error}</div>}
+                  </div>
+                </div>
+
+                {/* Analysis Column (Now Manual/Auto Input) */}
+                <div className="font-mono text-sm border-l border-white/10 pl-8 pt-2 hidden lg:block">
+                  <div className="flex justify-between items-center mb-6">
+                    <div className="text-xs opacity-40 uppercase tracking-widest">NETWORK DIAGNOSTICS</div>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 gap-1">
+                      <label className="opacity-50 text-xs block uppercase">[ TYPE OF ADDRESS ]</label>
+                      <input
+                        value={addressType}
+                        onChange={(e) => setAddressType(e.target.value)}
+                        placeholder="e.g. Private"
+                        className="bg-transparent border-b border-white/10 text-white focus:border-primarycolor focus:outline-none w-full py-1"
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 gap-1">
+                      <label className="opacity-50 text-xs block uppercase">[ RANGES ]</label>
+                      <input
+                        value={range}
+                        onChange={(e) => setRange(e.target.value)}
+                        placeholder="e.g. 192.168.0.0 - 192.168.255.255"
+                        className="bg-transparent border-b border-white/10 text-white focus:border-primarycolor focus:outline-none w-full py-1"
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 gap-1">
+                      <label className="opacity-50 text-xs block uppercase">[ AVAILABLE IP ADDRESSES ]</label>
+                      <input
+                        value={availableIps}
+                        onChange={(e) => setAvailableIps(e.target.value)}
+                        placeholder="e.g. 65,534"
+                        className="bg-transparent border-b border-white/10 text-white focus:border-primarycolor focus:outline-none w-full py-1"
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 gap-1">
+                      <label className="opacity-50 text-xs block uppercase">[ NETWORK ADDRESS ]</label>
+                      <input
+                        value={networkAddr}
+                        onChange={(e) => setNetworkAddr(e.target.value)}
+                        placeholder="e.g. 192.168.0.0"
+                        className="bg-transparent border-b border-white/10 text-white focus:border-primarycolor focus:outline-none w-full py-1"
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 gap-1">
+                      <label className="opacity-50 text-xs block uppercase">[ BROADCAST ADDRESS ]</label>
+                      <input
+                        value={broadcastAddr}
+                        onChange={(e) => setBroadcastAddr(e.target.value)}
+                        placeholder="e.g. 192.168.255.255"
+                        className="bg-transparent border-b border-white/10 text-primarycolor focus:border-primarycolor focus:outline-none w-full py-1"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Mobile View with Inputs */}
+                <div className="lg:hidden space-y-4 border-t border-white/10 pt-6 mt-6">
+                  <input
+                    value={addressType}
+                    onChange={(e) => setAddressType(e.target.value)}
+                    placeholder="Address Type"
+                    className="w-full bg-black/40 border border-white/20 p-2 text-white text-sm"
+                  />
+                  <input
+                    value={networkAddr}
+                    onChange={(e) => setNetworkAddr(e.target.value)}
+                    placeholder="Network Address"
+                    className="w-full bg-black/40 border border-white/20 p-2 text-white text-sm"
+                  />
+                </div>
+              </div>
+            </div>
           )}
+
 
           <p className="mt-20 text-xs opacity-30 font-mono">
             SYSTEM_ID: NR-2025-ALPHA // STATUS: {status === 'success' ? 'CONNECTED' : 'WAITING'}
