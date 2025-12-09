@@ -1,0 +1,90 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&display=swap');
+
+@theme {
+    --color-primarycolor: #00F3FF;
+    --color-secondarycolor: #0a0a0a;
+    --color-textcolor: #E0E0E0;
+    --color-success: #00FF41;
+    --color-error: #FF0055;
+    --font-heading: 'Rajdhani', sans-serif;
+    --font-body: 'Rajdhani', sans-serif;
+}
+
+:root {
+    font-family: var(--font-body);
+}
+
+body,
+html,
+#root {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    /* Hide main scrollbars, we will scroll a container */
+    background-color: var(--color-secondarycolor);
+    color: var(--color-textcolor);
+}
+
+/* Utilities for hiding scrollbar but keeping functionality if needed */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* Animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-fade-in-up {
+    animation: fadeInUp 0.8s ease-out forwards;
+}
+
+.delay-100 {
+    animation-delay: 100ms;
+}
+
+.delay-200 {
+    animation-delay: 200ms;
+}
+
+.delay-300 {
+    animation-delay: 300ms;
+}
+
+@keyframes float {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+.animate-float {
+    animation: float 6s ease-in-out infinite;
+}
+
+.font-mono-art {
+    font-family: 'Courier New', Courier, monospace;
+    white-space: pre;
+    line-height: 1;
+}
